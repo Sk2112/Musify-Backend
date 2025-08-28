@@ -32,4 +32,36 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             throw new RuntimeException("File upload to Cloudinary failed", e);
         }
     }
+
+
+    @Override
+    public void deleteFile(String fileUrl) {
+        try {
+            String[] parts = fileUrl.split("/");
+
+            // Find "upload" index
+            int uploadIndex = -1;
+            for (int i = 0; i < parts.length; i++) {
+                if (parts[i].equals("upload")) {
+                    uploadIndex = i;
+                    break;
+                }
+            }
+            if (uploadIndex == -1 || uploadIndex + 1 >= parts.length) {
+                throw new RuntimeException("Invalid Cloudinary URL");
+            }
+
+
+            String fileNameWithExt = parts[parts.length - 1];
+            String publicId = String.join("/", java.util.Arrays.copyOfRange(parts, uploadIndex + 1, parts.length));
+            publicId = publicId.substring(0, publicId.lastIndexOf(".")); // remove extension
+
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "auto"));
+            System.out.println("Deleted Cloudinary file: " + publicId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete file from Cloudinary", e);
+        }
+    }
+
+
 }

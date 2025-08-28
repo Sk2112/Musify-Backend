@@ -1,6 +1,7 @@
 package com.music.Musify.ServiceImp;
 
-
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.music.Musify.Entity.GeminiResponse;
 import com.music.Musify.Entity.Music;
 import com.music.Musify.Repository.MusicRepo;
@@ -67,4 +68,20 @@ public class MusicServiceIpl implements MusicService {
     public List<Music> getAllMusic() {
         return musicRepo.findAll();
     }
+
+    public void deleteMusic(Long musicId) {
+        Music music = musicRepo.findById(musicId)
+                .orElseThrow(() -> new RuntimeException("Music not found"));
+
+        // Delete from Cloudinary
+        cloudinaryService.deleteFile(music.getFilepath());
+
+        // Delete from DB
+        musicRepo.delete(music);
+        System.out.println("===========================");
+        System.out.println("Deleted Success "+musicId);
+        System.out.println("Deleted Success "+music);
+        System.out.println("===========================");
+    }
+
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.music.Musify.Entity.Music;
 import com.music.Musify.Service.MusicService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -43,4 +44,19 @@ public class MusicController {
     public ResponseEntity<List<Music>> getAllMusic() {
         return ResponseEntity.ok(musicService.getAllMusic());
     }
+
+    @DeleteMapping("/music/{id}")
+    public ResponseEntity<?> deleteMusic(@PathVariable Long id) {
+        try {
+            musicService.deleteMusic(id);
+            return ResponseEntity.ok("Music deleted successfully");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to delete music from controller: " + e.getMessage());
+        }
+    }
+
+
+
+
 }

@@ -14,6 +14,8 @@ public interface MusicService {
 
 
      // get all the music files
+     public void deleteMusic(Long musicId);
 
      List<Music> getAllMusic();
 }
+

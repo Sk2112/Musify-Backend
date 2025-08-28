@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.music.Musify.Entity.GeminiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -13,7 +14,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class GeminiService {
 
     private final WebClient webClient;
-    private final String apiKey = "AIzaSyCvnDtwV-s5ymnLwuO2XZtY5VsD3It90XM";
+
+    @Value("${gemini.api.key}")
+    private String apiKey;
+
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public GeminiService() {
         this.webClient = WebClient.builder()
@@ -22,35 +27,53 @@ public class GeminiService {
     }
 
     public GeminiResponse fetchSongDetails(String title) {
-        String promptText = "Give me details about the song '" + title +
-                "'. Include: artist, release date, short description, and 1 fun fact.";
+        String promptText = String.format(
+                "Provide details about the song '%s'. " +
+                        "Respond ONLY with valid JSON (no explanation, no extra text): " +
+                        "{ \"artist\": \"\", \"releaseDate\": \"\", \"description\": \"\", \"fact\": \"\" }",
+                title
+        );
 
         log.info("Generated Prompt: {}", promptText);
 
         String aiResponse = callGeminiApi(promptText);
         log.info("Raw Gemini API Response: {}", aiResponse);
 
-        ObjectMapper mapper = new ObjectMapper();
-
         try {
             JsonNode root = mapper.readTree(aiResponse);
-            String content = root
-                    .path("candidates")
-                    .get(0)
+
+            JsonNode candidates = root.path("candidates");
+            if (!candidates.isArray() || candidates.isEmpty()) {
+                throw new RuntimeException("No candidates found in Gemini response");
+            }
+
+            JsonNode content = candidates.get(0)
                     .path("content")
-                    .path("parts")
-                    .get(0)
-                    .path("text")
-                    .asText();
+                    .path("parts");
 
-            log.info("Parsed Content: {}", content);
+            if (!content.isArray() || content.isEmpty()) {
+                throw new RuntimeException("No content parts found in Gemini response");
+            }
 
-            String[] lines = content.split("\n");
+            String textContent = content.get(0).path("text").asText();
+            log.info("Parsed Content (raw): {}", textContent);
+
+            // 🔥 Fix: remove ```json ... ``` wrappers if present
+            String cleanJson = textContent
+                    .replaceAll("```json", "")
+                    .replaceAll("```", "")
+                    .trim();
+
+            log.info("Cleaned JSON for parsing: {}", cleanJson);
+
+            // Parse into JSON object
+            JsonNode responseJson = mapper.readTree(cleanJson);
+
             GeminiResponse response = new GeminiResponse();
-            response.setArtist(lines.length > 0 ? lines[0].replace("Artist: ", "") : "Unknown Artist");
-            response.setReleaseDate(lines.length > 1 ? lines[1].replace("Release Date: ", "") : "Unknown Release Date");
-            response.setDescription(lines.length > 2 ? lines[2].replace("Description: ", "") : "No description available.");
-            response.setFact(lines.length > 3 ? lines[3].replace("Fun fact: ", "") : "No fun fact available.");
+            response.setArtist(responseJson.path("artist").asText("Unknown Artist"));
+            response.setReleaseDate(responseJson.path("releaseDate").asText("Unknown Release Date"));
+            response.setDescription(responseJson.path("description").asText("No description available."));
+            response.setFact(responseJson.path("fact").asText("No fun fact available."));
 
             log.info("Final GeminiResponse: {}", response);
             return response;
@@ -71,22 +94,19 @@ public class GeminiService {
         String requestBody = "{"
                 + "\"contents\": ["
                 + "  {"
-                + "    \"parts\": [ { \"text\": \"" + promptText + "\" } ]"
+                + "    \"parts\": [ { \"text\": \"" + promptText.replace("\"", "\\\"") + "\" } ]"
                 + "  }"
                 + "]"
                 + "}";
 
         log.info("Sending Request Body: {}", requestBody);
 
-        String response = webClient.post()
+        return webClient.post()
                 .uri("/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
-
-        log.info("Received Response: {}", response);
-        return response;
     }
 }
