@@ -40,6 +40,7 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
 gemini.api.key=<GEMINI API KEY>
 ``` 
+---
 
 ## ▶️ Run the Application
 
@@ -47,26 +48,27 @@ gemini.api.key=<GEMINI API KEY>
 ```bash
  mvn spring-boot:run
 ```
-
+---
 ## 📡 API Endpoints
 | Method | Endpoint          | Description       |
 | ------ | ----------------- | ----------------- |
 | GET    | `/api/songs`      | Fetch all songs   |
 | POST   | `/api/songs`      | Add a new song    |
 
+---
 ## 🤝 Contribution
 
 - Fork the repo
 - Create a new branch (feature/new-feature)
 - Commit changes
 - Push and create a PR
-
+---
 ## Front End
 Link to Frontend 
 - ``` bash
   http://localhhost:3000
   ```
-  
+---
 ## 📜 License
 This project is licensed under the MIT License.
 
